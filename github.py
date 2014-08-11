@@ -79,8 +79,40 @@ def getOwner():
 
 
 def createIssues(issues):
+	beforeIssues = getIssueNumberList()
+	afterIssues = []
 	for issue in issues:
-		createIssue(issue)
+		if issue.data['number'] is not None:
+			afterIssues.append(issue.data['number'])
+		else:
+			number = createIssue(issue)
+			# inject iss_number tag into TODO comment
+			injectNumber(issue, number)
+
+	print "before issues:"
+	print beforeIssues
+	print "after issues:"
+	print afterIssues
+
+	removeIssuesInDiff(beforeIssues, afterIssues)
+
+def injectNumber(issue, number):
+	with open(issue.fileName, 'r') as file:
+		data = file.readlines()
+
+	startToken = "TODO: "
+
+	lineNumber = issue.line - 1
+	line = data[lineNumber]
+	startIndex = line.index(startToken) + len(startToken)
+	print "Before:", data[lineNumber]
+	data[lineNumber] = data[lineNumber][:startIndex] + "@iss_number:" + str(number) + " " + data[lineNumber][startIndex:]
+	print "After:", data[lineNumber]
+
+	with open(issue.fileName, 'w') as file:
+		file.writelines(data)
+
+
 
 def createIssue(issue):
 	print "CREATING ISSUE: ", issue.issue, " in file: ", issue.fileName, " on line: ", issue.line, " with label: ", issue.label
