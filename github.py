@@ -129,3 +129,17 @@ def getIssueNumberList():
 		print r.text
 		print "{}:{}".format("Status", r.status_code)
 		return None
+
+def removeIssuesInDiff(beforeIssues, afterIssues):
+	def diff(a, b):
+		b = set(b)
+		return [aa for aa in a if aa not in b]
+	
+	data = {"state" : "closed"}
+	
+	for issue in diff(beforeIssues, afterIssues):
+		url = urljoin(API_URL, "/".join(["repos", getOwner(), getRepo(), "issues", str(issue)]))
+		url = url + "?access_token=" + getToken()
+		r = requests.post(url, data = json.dumps(data), headers = HEADERS)
+		if r.ok:
+			print "Closed issue ", issue
