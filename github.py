@@ -142,4 +142,4 @@ def removeIssuesInDiff(beforeIssues, afterIssues):
 		url = url + "?access_token=" + getToken()
 		r = requests.post(url, data = json.dumps(data), headers = HEADERS)
 		if r.ok:
-			print "Closed issue ", issue
+			print "Closed issue", issue
