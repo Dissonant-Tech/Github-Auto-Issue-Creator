@@ -11,7 +11,7 @@ endToken = "ODOT"
 #issue class, just has the content and lineNumber fields right now.
 class Issue:
 	def __init__(self, title, issueContent, lineNumber, fileName, label):
-		self.data = []
+		self.data = {}
 		self.title = title
 		self.issue = issueContent
 		self.line = lineNumber
@@ -76,9 +76,10 @@ def lookForIssue(file):	#reads through an input file and returns a list of issue
 
 #function that parses out the portion enclosed in the TODO ... ODOT in the string and returns the completed obj
 def generateIssue(issueText, lineNumber, fileName):
-	args = ["@title", "@label"]
+	args = ["@title", "@label", "@iss_number"]
 	label = None
 	title = None
+	number = None
 
 	#search for any sort of arguments in the todo
 	splitString = issueText.split(" ") #tokenize the input string to try to find args
@@ -88,14 +89,19 @@ def generateIssue(issueText, lineNumber, fileName):
 				if arg is "@title":
 					title = token.split(":")[1]
 					print "arg found! ", arg, ": ", title
-				else:
+				elif arg is "@label":
 					label = token.split(":")[1]
 					print "arg found! ", arg, ": ", label
+				else:
+					number = int(token.split(":")[1])
+					print "arg found!", arg, ":", number
 
 
 	startIndex = issueText.index(startToken) + 6 #+6 is to account for "TODO: "
 	endIndex = issueText.index(endToken)
-	return Issue(title, issueText[startIndex:endIndex], lineNumber, fileName, label)
+	issue = Issue(title, issueText[startIndex:endIndex], lineNumber, fileName, label)
+	issue.data['number'] = number
+	return issue
 
 #returns the list of issues in a specific directory (and all children), or "." by default
 def getIssueList(dir = "."):
