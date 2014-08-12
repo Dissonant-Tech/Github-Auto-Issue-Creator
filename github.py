@@ -102,7 +102,8 @@ def createIssues(issues, debug = False):
 
 	util.debug_print("before issues:\n", str(beforeIssues), "after issues:\n", str(afterIssues))
 
-	removeIssuesInDiff(beforeIssues, afterIssues) if not debug
+	if not debug:
+		removeIssuesInDiff(beforeIssues, afterIssues) 
 
 
 def createIssue(issue):

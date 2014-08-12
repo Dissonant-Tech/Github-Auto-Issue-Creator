@@ -140,7 +140,7 @@ def main():
 	from github import createIssues
 	parser = argparse.ArgumentParser(description="Auto-Issue-Creator argument parser")
 	parser.add_argument("-s", "--start", help="the token that begins the TODO: (ie. 'TODO')")
-	parser.add_argument("-d", "--debug", help="enable debug mode (no POSTing to github)")
+	parser.add_argument("-d", "--debug", action='store_true', help="enable debug mode (no POSTing to github)")
 
 	args = vars(parser.parse_args())
 
@@ -151,8 +151,16 @@ def main():
 	else:
 		print "Using default starting token: ", startToken
 
+	#see if we're in debug mode
+	if args["debug"]:
+		debug = True
+		print "Debug mode enabled"
+	else:
+		debug = False
+
+
 	issueList = getIssueList()
-	createIssues(issueList)
+	createIssues(issueList, debug)
 
 if __name__ == "__main__":
     main()
