@@ -123,6 +123,20 @@ def getIssueList(dir = "."):
 
 	return issueList
 
+def injectNumber(issue, number):
+	with open(issue.fileName, 'r') as file:
+		data = file.readlines()
+
+	lineNumber = issue.line - 1
+	line = data[lineNumber]
+	startIndex = line.index(startToken) + len(startToken)
+	print "Before:", data[lineNumber]
+	data[lineNumber] = data[lineNumber][:startIndex] + "@iss_number:" + str(number) + " " + data[lineNumber][startIndex:]
+	print "After:", data[lineNumber]
+
+	with open(issue.fileName, 'w') as file:
+		file.writelines(data)
+
 def main():
 	parser = argparse.ArgumentParser(description="Auto-Issue-Creator argument parser")
 	parser.add_argument("-s", "--start", help="the token that begins the TODO: (ie. 'TODO')")

@@ -2,16 +2,18 @@ import requests
 import json
 import getpass
 import os
+import util
+from autoissue import injectNumber
 from urlparse import urljoin
 
 
 API_URL = 'https://api.github.com'
-SETTINGS = "settings.williames" #settings file
-
+SETTINGS = 'settings.williames' #settings file
 HEADERS = {'Content-type':'application/json'}
+TOKEN_KEY = 'auth_token'
 
 def getToken():
-	val = getValue("auth_token")
+	val = getValue(TOKEN_KEY)
 	if val is not None:
 		return val
 	
@@ -28,37 +30,39 @@ def getToken():
 
 	if r.ok:
 		token = json.loads(r.text or r.content)['token']
-		if not addProperty('auth_token', token):
+		if not addProperty(TOKEN_KEY, token):
 			print "Could not write authorization token to settings file. Please add the following line to " + SETTINGS + ":\n" + "auth_token " + token
 		return token
 
 def getValue(key):
-	if not os.path.exists(SETTINGS):
-		open(SETTINGS, 'a').close()
-	with open(SETTINGS) as f:
-		for line in f:
-			if key in line:
-				return line.split(" ", 1)[1].strip(" \n")
+	if os.path.exists(SETTINGS):
+		with open(SETTINGS) as f:
+			for line in f:
+				if key in line:
+					return line.split(" ", 1)[1].strip(" \n")
 	return None
 		
 def addProperty(key, value):
-	with open(SETTINGS, "a+") as sett:
+	with open(SETTINGS, "a+") as sett: # Will create the file if it does not exist
 		sett.write(key + " " + value + "\n")
 		return True
 
-	return False #something bad happened
+	return False
 
 
 def getRepo():
 	val = getValue("repo")
-	if val is not None:
-		return val
 
+	if val is not None:
+		return val # return the repo saved in the settings file
+
+	# Get the active git repo
 	with open('.git/config') as f:
 		for line in f:
 			if "url = " in line:
 				r = line.split("=")[1].split("github.com/")[1].split("/")[1].replace(".git\n", "")
 	
+	# Add to our settings file
 	if r:
 		addProperty("repo", r)
 		return r
@@ -66,13 +70,16 @@ def getRepo():
 def getOwner():
 	val = getValue("owner")
 	if val is not None:
-		return val
+		return val # return the owner saved in the settings file
 
+
+	# Get the active git repo
 	with open('.git/config') as f:
 		for line in f:
 			if "url = " in line:
 				r = line.split("=")[1].split("github.com/")[1].split("/")[0]
 
+	# Add to our settings file
 	if r:
 		addProperty("owner", r)
 		return r
@@ -81,53 +88,34 @@ def getOwner():
 def createIssues(issues):
 	beforeIssues = getIssueNumberList()
 	afterIssues = []
+
 	for issue in issues:
 		if issue.data['number'] is not None:
 			afterIssues.append(issue.data['number'])
 		else:
 			number = createIssue(issue)
 			# inject iss_number tag into TODO comment
-			injectNumber(issue, number)
+			autoissue.injectNumber(issue, number)
 
-	print "before issues:"
-	print beforeIssues
-	print "after issues:"
-	print afterIssues
+	util.debug_print("before issues:\n", str(beforeIssues), "after issues:\n", str(afterIssues))
 
 	removeIssuesInDiff(beforeIssues, afterIssues)
-
-def injectNumber(issue, number):
-	with open(issue.fileName, 'r') as file:
-		data = file.readlines()
-
-	startToken = "TODO: "
-
-	lineNumber = issue.line - 1
-	line = data[lineNumber]
-	startIndex = line.index(startToken) + len(startToken)
-	print "Before:", data[lineNumber]
-	data[lineNumber] = data[lineNumber][:startIndex] + "@iss_number:" + str(number) + " " + data[lineNumber][startIndex:]
-	print "After:", data[lineNumber]
-
-	with open(issue.fileName, 'w') as file:
-		file.writelines(data)
-
 
 
 def createIssue(issue):
 	print "CREATING ISSUE: ", issue.issue, " in file: ", issue.fileName, " on line: ", issue.line, " with label: ", issue.label
 
-	if issue.label is None:
-		labels = []
-	else:
-		labels = [issue.label]
+	title = "{} : {}".format(issue.fileName, issue.line)
+	body = issue.issue
+	assignee = getOwner()
+	labels = [] if issue.label is None else [issue.label]
 	
-	data = {"title" : "{} : {}".format(issue.fileName, issue.line), "body" : issue.issue, "assignee" : "tylermuch", "milestone" : None, "state" : "open", "labels" : labels}
+	data = {"title" : title, "body" : body, "state" : "open", "labels" : labels}
 	
 	url = urljoin(API_URL, "/".join(["repos", getOwner(), getRepo(), "issues"]))
 	url = url + "?access_token=" + getToken()
 
-	print "url = " + url
+	util.debug_print("Issue create request url =", url)
 
 	r = requests.post(url, data = json.dumps(data), headers = HEADERS)
 
