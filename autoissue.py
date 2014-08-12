@@ -4,7 +4,7 @@ import os, argparse
 from github import createIssues
 
 #global vars
-blacklist = [".git", "autoissue.py", "github.py", "README"] #blacklist for file/dir names
+blacklist = [".git", "autoissue.py", "github.py", "README.md", "util.py", "settings.williames", ".gitignore"] #blacklist for file/dir names
 startToken = "TODO"
 endToken = "ODOT"
 
