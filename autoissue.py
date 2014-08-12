@@ -130,7 +130,7 @@ def injectNumber(issue, number):
 	line = data[lineNumber]
 	startIndex = line.index(startToken) + len(startToken)
 	print "Before:", data[lineNumber]
-	data[lineNumber] = data[lineNumber][:startIndex] + "@iss_number:" + str(number) + " " + data[lineNumber][startIndex:]
+	data[lineNumber] = data[lineNumber][:startIndex+1] + "@iss_number:" + str(number) + " " + data[lineNumber][startIndex:]
 	print "After:", data[lineNumber]
 
 	with open(issue.fileName, 'w') as file:
