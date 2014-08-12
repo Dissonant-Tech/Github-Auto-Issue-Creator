@@ -97,10 +97,12 @@ def createIssues(issues, debug = False):
 				number = createIssue(issue)
 				# inject iss_number tag into TODO comment
 				autoissue.injectNumber(issue, number)
+			else:
+				print "Debug mode on. Not actually creating issues in repo"
 
 	util.debug_print("before issues:\n", str(beforeIssues), "after issues:\n", str(afterIssues))
 
-	removeIssuesInDiff(beforeIssues, afterIssues)
+	removeIssuesInDiff(beforeIssues, afterIssues) if not debug
 
 
 def createIssue(issue):
