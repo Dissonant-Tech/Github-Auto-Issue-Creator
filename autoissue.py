@@ -1,7 +1,6 @@
 #!/usr/bin/python
 #from os import listdir, path
 import os, argparse
-from github import createIssues
 
 #global vars
 blacklist = [".git", "autoissue.py", "github.py", "README.md", "util.py", "settings.williames", ".gitignore"] #blacklist for file/dir names
@@ -138,9 +137,11 @@ def injectNumber(issue, number):
 		file.writelines(data)
 
 def main():
+	from github import createIssues
 	parser = argparse.ArgumentParser(description="Auto-Issue-Creator argument parser")
 	parser.add_argument("-s", "--start", help="the token that begins the TODO: (ie. 'TODO')")
-	parser.add_argument("-e", "--end", help="the token that ends the TODO: (ie. 'ODOT')")
+	parser.add_argument("-d", "--debug", help="enable debug mode (no POSTing to github)")
+
 	args = vars(parser.parse_args())
 
 	if args["start"] != None:
@@ -149,13 +150,6 @@ def main():
 		print "Starting token set as: ", startToken
 	else:
 		print "Using default starting token: ", startToken
-
-	if args["end"] != None:
-		global endToken #set scope
-		endToken = args["end"]
-		print "Ending token set as: ", endToken
-	else:
-		print "Using default ending token: ", endToken
 
 	issueList = getIssueList()
 	createIssues(issueList)
