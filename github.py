@@ -85,7 +85,7 @@ def getOwner():
 		return r
 
 
-def createIssues(issues):
+def createIssues(issues, debug = False):
 	beforeIssues = getIssueNumberList()
 	afterIssues = []
 
@@ -93,9 +93,10 @@ def createIssues(issues):
 		if issue.data['number'] is not None:
 			afterIssues.append(issue.data['number'])
 		else:
-			number = createIssue(issue)
-			# inject iss_number tag into TODO comment
-			autoissue.injectNumber(issue, number)
+			if not debug:
+				number = createIssue(issue)
+				# inject iss_number tag into TODO comment
+				autoissue.injectNumber(issue, number)
 
 	util.debug_print("before issues:\n", str(beforeIssues), "after issues:\n", str(afterIssues))
 
