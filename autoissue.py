@@ -97,7 +97,7 @@ def generateIssue(issueText, lineNumber, fileName):
 					print "arg found!", arg, ":", number
 
 
-	startIndex = issueText.index(startToken) + 6 #+6 is to account for "TODO: "
+	startIndex = issueText.index(startToken) + len(startToken)
 	endIndex = issueText.index(endToken)
 	issue = Issue(title, issueText[startIndex:endIndex], lineNumber, fileName, label)
 	issue.data['number'] = number
