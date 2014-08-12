@@ -98,7 +98,7 @@ def createIssues(issues, debug = False):
 			else:
 				number = createIssue(issue)
 				# inject iss_number tag into TODO comment
-				autoissue.injectNumber(issue, number)
+				injectNumber(issue, number)
 
 		util.debug_print("before issues:\n", str(beforeIssues), "after issues:\n", str(afterIssues))
 		removeIssuesInDiff(beforeIssues, afterIssues) 
