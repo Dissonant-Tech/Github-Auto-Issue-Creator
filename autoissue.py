@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #from os import listdir, path
-import os, argparse
+import os, argparse, re
 
 #global vars
 blacklist = [".git", "autoissue.py", "github.py", "README.md", "util.py", "settings.williames", ".gitignore"] #blacklist for file/dir names
@@ -16,6 +16,9 @@ class Issue:
 		self.line = lineNumber
 		self.fileName = fileName
 		self.label = label
+
+	def __str__(self):
+		return "Issue: {}\n\tIssue#: {}\n\tFile: {}\n\tLine: {}\n\tLabels: {}\n\tContent: {}\n".format(self.title, self.data['number'], self.fileName, self.line, self.label, self.issue)
 
 
 #Function that gets all of the files (and folders) in a folder
@@ -34,7 +37,7 @@ def getFiles(directory):
 			for file in getFiles(d): #recursively iterate through the subfolders
 				fileList.append(file)
 
-		#otherwise the file is indeed a file (excluding the current file, autoissue.py)	
+		#otherwise the file is indeed a file (excluding the current file, autoissue.py)
 		#make sure our file isn't blacklisted before actually adding it to the list
 		else:
 			#iterate through our blacklist
@@ -54,8 +57,117 @@ def getFiles(directory):
 	return fileList
 
 
+
+### NEW FUNCTIONS
+
+def getIssues():
+	issueList = []
+	files =	getFiles(dir)
+
+
+	for file in files:
+		for fileIssues in findIssuesInFile(file):
+			issueList.append(fileIssues)
+
+
+
+	print "\n\n\n\n ISSUES TO BE ADDED TO THE REPO:"
+	for issue in issueList:
+		print issue.title, "\n", issue.issue, "in \n", issue.fileName, "on line ", issue.line, "with label(s): ", issue.label, "\n\n"
+
+
+	return issueList
+
+# returns a list of the Issues in this file
+def findIssuesInFile(file):
+	lineNumber = 0
+	issueList = []
+
+	with open(file, 'r') as f:
+		data = f.readlines()
+
+	print "Searching for issues in:", file, "(lines: {})".format(len(data))
+
+	while lineNumber < len(data):
+		issueString = ""
+		if startToken in data[lineNumber] or "FIXME" in data[lineNumber]:
+			if data[lineNumber].strip().startswith("//"):
+				startingLine = lineNumber
+				issueString += data[lineNumber]
+				lineNumber += 1
+				while lineNumber < len(data):
+					line = data[lineNumber]
+					if line.strip(): # if the line is not empty
+						if line.startswith("//"):
+							issueString += line
+						else:
+							lineNumber -= 1 # since we increment outside of this loop
+							break
+					lineNumber += 1
+			elif data[lineNumber].strip().startswith("/*"):
+				startingLine = lineNumber
+				issueString += data[lineNumber]
+				if not issueString.strip().endswith("*/"):
+					lineNumber += 1
+					while lineNumber < len(data):
+						line = data[lineNumber]
+						if line.strip():
+							issueString += line
+							if line.strip().endswith("*/"):
+								break
+						lineNumber += 1
+			issueList.append(parseIssueFromRawComment(issueString, startingLine, file))
+		lineNumber += 1
+	return issueList
+
+
+# returns an Issue
+def parseIssueFromRawComment(comment, line, file):
+	data = {}
+	#title
+	#issueContent
+	#lineNumber
+	#fileName
+	#label
+	tags_regex = "\[(.*?)\]"
+	r = re.compile(tags_regex)
+	tags = r.findall(comment)
+
+	# If no [title:] tag is specified, then the first line is autmatically the title
+	for tag in tags:
+		if ":" not in tag:
+			# This is the issue number tag
+			data['number'] = int(tag) # Should eventually check to be sure there are only numbers in here
+		else:
+			t, v = tag.split(":")
+			#print "TAG:", t, "VALUE:", v
+			if t.lower() == "title":
+				title = v
+			elif t.lower() == "label":
+				labels = [x.strip() for x in v.split(",")]
+
+	if title is None:
+		title = comment.split("\n")[0]
+
+	content = re.sub(tags_regex, "", comment)
+	content = re.sub("(//(\s*)TODO)|(/\*(\s*)TODO)|(\*/)", "", content).strip()
+	#print "CONTENT:", content
+	issue = Issue(title, content, line, file, labels)
+	issue.data = data
+	return issue
+
+
+def debug_add(base, addition):
+	print base, "+", addition
+	return base + addition
+
+### END NEW FUNCTIONS
+
+
+
+
 #Function which takes a file and returns a list of Issues
-def lookForIssue(file):	#reads through an input file and returns a list of issues to be posted to github repo
+def lookForIssue(file):
 	#local variables
 	lineNumber = 1
 	issueList = []
@@ -159,8 +271,13 @@ def main():
 		debug = False
 
 
-	issueList = getIssueList()
+	#issueList = getIssueList()
+	#createIssues(issueList, debug)
+
+	issueList = getIssues()
 	createIssues(issueList, debug)
 
 if __name__ == "__main__":
-    main()
+    #main()
+	comment = "/*TODO [title:Title][label:bug, wontfix][56] This is the issue thing*/"
+	print parseIssueFromRawComment(comment, 0, "test")
