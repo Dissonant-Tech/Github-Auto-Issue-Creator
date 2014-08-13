@@ -9,16 +9,17 @@ endToken = "ODOT"
 
 #issue class, just has the content and lineNumber fields right now.
 class Issue:
-	def __init__(self, title, issueContent, lineNumber, fileName, label):
+	def __init__(self, title, issueContent, lineNumber, fileName, label, inum):
 		self.data = {}
 		self.title = title
 		self.issue = issueContent
 		self.line = lineNumber
 		self.fileName = fileName
 		self.label = label
+		self.issue_num = inum
 
 	def __str__(self):
-		return "Issue: {}\n\tIssue#: {}\n\tFile: {}\n\tLine: {}\n\tLabels: {}\n\tContent: {}\n".format(self.title, self.data['number'], self.fileName, self.line, self.label, self.issue)
+		return "Issue: {}\n\tIssue#: {}\n\tFile: {}\n\tLine: {}\n\tLabels: {}\n\tContent: {}\n".format(self.title, self.issue_num, self.fileName, self.line, self.label, self.issue)
 
 
 #Function that gets all of the files (and folders) in a folder
@@ -124,11 +125,9 @@ def findIssuesInFile(file):
 # returns an Issue
 def parseIssueFromRawComment(comment, line, file):
 	data = {}
-	#title
-	#issueContent
-	#lineNumber
-	#fileName
-	#label
+	title = None
+	labels = []
+	inum = None
 	tags_regex = "\[(.*?)\]"
 	r = re.compile(tags_regex)
 	tags = r.findall(comment)
@@ -137,7 +136,7 @@ def parseIssueFromRawComment(comment, line, file):
 	for tag in tags:
 		if ":" not in tag:
 			# This is the issue number tag
-			data['number'] = int(tag) # Should eventually check to be sure there are only numbers in here
+			inum = int(tag) # Should eventually check to be sure there are only numbers in here
 		else:
 			t, v = tag.split(":")
 			#print "TAG:", t, "VALUE:", v
@@ -146,13 +145,13 @@ def parseIssueFromRawComment(comment, line, file):
 			elif t.lower() == "label":
 				labels = [x.strip() for x in v.split(",")]
 
-	if title is None:
+	if not title:
 		title = comment.split("\n")[0]
 
 	content = re.sub(tags_regex, "", comment)
 	content = re.sub("(//(\s*)TODO)|(/\*(\s*)TODO)|(\*/)", "", content).strip()
 	#print "CONTENT:", content
-	issue = Issue(title, content, line, file, labels)
+	issue = Issue(title, content, line, file, labels, inum)
 	issue.data = data
 	return issue
 
@@ -279,5 +278,5 @@ def main():
 
 if __name__ == "__main__":
     #main()
-	comment = "/*TODO [title:Title][label:bug, wontfix][56] This is the issue thing*/"
-	print parseIssueFromRawComment(comment, 0, "test")
+	for issue in findIssuesInFile("test/parsingtests/inputs/line_block_line_block"):
+		print issue
