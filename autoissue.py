@@ -4,7 +4,7 @@ import os, argparse, re
 from util import debug_print
 
 #global vars
-blacklist = [".git", "autoissue.py", "github.py", "README.md", "util.py", "settings.williames", ".gitignore"] #blacklist for file/dir names
+blacklist = [".git", "autoissue.py*", "github.py*", "README.md", "util.py*", "settings.williames", ".gitignore", "setup", "*.DS_Store", "test/parsingtests", "test.py*"] #blacklist for file/dir names (added .DS_Store because super annoying)
 startToken = "TODO"
 endToken = "ODOT"
 
@@ -30,6 +30,8 @@ class Issue:
 		and	self.label == other.label \
 		and	self.issue_num == other.issue_num \
 
+def blacklistToRegex():
+	return [path.replace("*", "(.*)") for path in blacklist]
 
 #Function that gets all of the files (and folders) in a folder
 def getFiles(directory):
@@ -40,49 +42,22 @@ def getFiles(directory):
 	for d in os.listdir(directory):
 		d = directory + "/" + d #make the format actually work for our function calls
 
-		#print d, os.path.isdir(d) #debug
-
-		#if the "file" is a directory...
-		if os.path.isdir(d) and not ".git" in d: #we never want .git files; excluded to prevent stdout pollution
-			for file in getFiles(d): #recursively iterate through the subfolders
-				fileList.append(file)
-
-		#otherwise the file is indeed a file (excluding the current file, autoissue.py)
-		#make sure our file isn't blacklisted before actually adding it to the list
+		print "Checking blacklist for", d.replace("./", "")
+		if any([re.match(pattern + "$", d.replace("./", "")) is not None for pattern in blacklistToRegex()]):
+			print "Blacklisted."
 		else:
-			#iterate through our blacklist
-			for black in blacklist:
-				if black in d:
-					blacklisted = True
+			#if the "file" is a directory...
+			if os.path.isdir(d) and not ".git" in d: #we never want .git files; excluded to prevent stdout pollution
+				for file in getFiles(d): #recursively iterate through the subfolders
+					fileList.append(file)
 
-			if not blacklisted:
-				fileList.append(d)
-
+			#otherwise the file is indeed a file (excluding the current file, autoissue.py)
+			#make sure our file isn't blacklisted before actually adding it to the list
 			else:
-				print "Excluded file (blacklist): ", d
-
-
-
+				if d not in blacklist:
+					fileList.append(d)
 	#return list of actual files to open
 	return fileList
-
-def getIssues(directory = "."):
-	issueList = []
-	files =	getFiles(directory)
-
-
-	for file in files:
-		for fileIssues in findIssuesInFile(file):
-			issueList.append(fileIssues)
-
-
-
-	print "\n\n\n\n ISSUES TO BE ADDED TO THE REPO:"
-	for issue in issueList:
-		print issue.title, "\n", issue.issue, "in \n", issue.fileName, "on line ", issue.line, "with label(s): ", issue.label, "\n\n"
-
-
-	return issueList
 
 # returns a list of the Issues in this file
 def findIssuesInFile(file):
@@ -96,7 +71,7 @@ def findIssuesInFile(file):
 
 	while lineNumber < len(data):
 		issueString = ""
-		if startToken in data[lineNumber] or "FIXME" in data[lineNumber]:
+		if startToken in data[lineNumber]:
 			if data[lineNumber].strip().startswith("//"):
 				startingLine = lineNumber
 				issueString += data[lineNumber]
@@ -153,12 +128,11 @@ def parseIssueFromRawComment(comment, line, file):
 			elif t.lower() == "label":
 				labels = [x.strip() for x in v.split(",")]
 
-	if not title:
-		title = comment.split("\n")[0]
+	if title is None:
+		title = "*AutoIssue* " + comment.split("\n")[0] # Make the title the first line of the comment
 
 	content = re.sub(tags_regex, "", comment)
 	content = re.sub("(//(\s*)TODO)|(/\*(\s*)TODO)|(\*/)", "", content).strip()
-	#print "CONTENT:", content
 	issue = Issue(title, content, line + 1, file, labels, inum)
 	issue.data = data
 	return issue
@@ -177,7 +151,7 @@ def injectNumber(issue, number):
 	line = data[lineNumber]
 	startIndex = line.index(startToken) + len(startToken)
 	print "Before:", data[lineNumber]
-	data[lineNumber] = data[lineNumber][:startIndex+1] + " [" + str(number) + "] " + data[lineNumber][startIndex:]
+	data[lineNumber] = data[lineNumber][:startIndex+1] + "[" + str(number) + "]" + data[lineNumber][startIndex:]
 	print "After:", data[lineNumber]
 
 	with open(issue.fileName, 'w') as file:
@@ -205,6 +179,7 @@ def main():
 	else:
 		debug = False
 
+	getBlacklist()
 
 	#issueList = getIssueList()
 	#createIssues(issueList, debug)
@@ -213,4 +188,7 @@ def main():
 	createIssues(issueList, debug)
 
 if __name__ == "__main__":
-    main()
+    #main()
+	getBlacklist()
+	print getFiles(".")
+	#print blacklistToRegex()

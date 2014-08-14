@@ -97,7 +97,7 @@ def createIssues(issues, debug = False):
 				afterIssues.append(issue.issue_num)
 			else:
 				number = createIssue(issue)
-				# inject iss_number tag into TODO comment
+				# inject issue number tag into TODO comment
 				injectNumber(issue, number)
 
 		util.debug_print("before issues:\n", str(beforeIssues), "after issues:\n", str(afterIssues))
@@ -143,7 +143,8 @@ def getIssueNumberList():
 	if r.ok:
 		j = json.loads(r.text or r.content)
 		for issue in j:
-			list.append(issue['number'])
+			if "*AutoIssue*" in issue['title']:
+				list.append(issue['number'])
 		return list
 	#TODO: error handling
 	else:
@@ -165,3 +166,5 @@ def removeIssuesInDiff(beforeIssues, afterIssues):
 		r = requests.post(url, data = json.dumps(data), headers = HEADERS)
 		if r.ok:
 			print "Closed issue", issue
+
+print getIssueNumberList()
