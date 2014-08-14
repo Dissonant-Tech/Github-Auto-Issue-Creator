@@ -1,6 +1,7 @@
 #!/usr/bin/python
 #from os import listdir, path
 import os, argparse, re
+from util import debug_print
 
 #global vars
 blacklist = [".git", "autoissue.py", "github.py", "README.md", "util.py", "settings.williames", ".gitignore"] #blacklist for file/dir names
@@ -20,6 +21,14 @@ class Issue:
 
 	def __str__(self):
 		return "Issue: {}\n\tIssue#: {}\n\tFile: {}\n\tLine: {}\n\tLabels: {}\n\tContent: {}\n".format(self.title, self.issue_num, self.fileName, self.line, self.label, self.issue)
+
+	def __cmp__(self, other):
+		return self.title == other.title \
+		and self.issue == other.issue \
+		and	self.line  == other.line \
+		and	self.fileName  == other.fileName \
+		and	self.label == other.label \
+		and	self.issue_num == other.issue_num \
 
 
 #Function that gets all of the files (and folders) in a folder
@@ -57,13 +66,9 @@ def getFiles(directory):
 	#return list of actual files to open
 	return fileList
 
-
-
-### NEW FUNCTIONS
-
-def getIssues():
+def getIssues(directory = "."):
 	issueList = []
-	files =	getFiles(dir)
+	files =	getFiles(directory)
 
 
 	for file in files:
@@ -87,7 +92,7 @@ def findIssuesInFile(file):
 	with open(file, 'r') as f:
 		data = f.readlines()
 
-	print "Searching for issues in:", file, "(lines: {})".format(len(data))
+	debug_print("Searching for issues in:", file, "(lines: {})".format(len(data)))
 
 	while lineNumber < len(data):
 		issueString = ""
@@ -117,6 +122,9 @@ def findIssuesInFile(file):
 							if line.strip().endswith("*/"):
 								break
 						lineNumber += 1
+			else:
+				lineNumber += 1
+				break
 			issueList.append(parseIssueFromRawComment(issueString, startingLine, file))
 		lineNumber += 1
 	return issueList
@@ -151,7 +159,7 @@ def parseIssueFromRawComment(comment, line, file):
 	content = re.sub(tags_regex, "", comment)
 	content = re.sub("(//(\s*)TODO)|(/\*(\s*)TODO)|(\*/)", "", content).strip()
 	#print "CONTENT:", content
-	issue = Issue(title, content, line, file, labels, inum)
+	issue = Issue(title, content, line + 1, file, labels, inum)
 	issue.data = data
 	return issue
 
@@ -160,78 +168,6 @@ def debug_add(base, addition):
 	print base, "+", addition
 	return base + addition
 
-### END NEW FUNCTIONS
-
-
-
-
-#Function which takes a file and returns a list of Issues
-def lookForIssue(file):
-	#local variables
-	lineNumber = 1
-	issueList = []
-
-	with open(file) as f:
-		print "Searching for ", startToken, " in: ", file
-		for line in f:
-			if startToken in line:
-				iss = generateIssue(line, lineNumber, file)
-				issueList.append(iss)
-				lineNumber = 0;
-
-			lineNumber += 1
-
-	return issueList
-
-
-#function that parses out the portion enclosed in the TODO ... ODOT in the string and returns the completed obj
-def generateIssue(issueText, lineNumber, fileName):
-	args = ["@title", "@label", "@iss_number"]
-	label = None
-	title = None
-	number = None
-
-	#search for any sort of arguments in the todo
-	splitString = issueText.split(" ") #tokenize the input string to try to find args
-	for arg in args:
-		for token in splitString:
-			if arg in token:
-				if arg is "@title":
-					title = token.split(":")[1]
-					print "arg found! ", arg, ": ", title
-				elif arg is "@label":
-					label = token.split(":")[1]
-					print "arg found! ", arg, ": ", label
-				else:
-					number = int(token.split(":")[1])
-					print "arg found!", arg, ":", number
-
-
-	startIndex = issueText.index(startToken) + len(startToken)
-	endIndex = issueText.index(endToken)
-	issue = Issue(title, issueText[startIndex:endIndex], lineNumber, fileName, label)
-	issue.data['number'] = number
-	return issue
-
-#returns the list of issues in a specific directory (and all children), or "." by default
-def getIssueList(dir = "."):
-	#local variables
-	issueList = []
-	files =	getFiles(dir)
-
-
-	for file in files:
-		for issue in lookForIssue(file):
-			issueList.append(issue)
-
-
-
-	print "\n\n\n\n ISSUES TO BE ADDED TO THE REPO:"
-	for issue in issueList:
-		print issue.title, "\n", issue.issue, "in \n", issue.fileName, "on line ", issue.line, "with label(s): ", issue.label, "\n\n"
-
-
-	return issueList
 
 def injectNumber(issue, number):
 	with open(issue.fileName, 'r') as file:
@@ -241,7 +177,7 @@ def injectNumber(issue, number):
 	line = data[lineNumber]
 	startIndex = line.index(startToken) + len(startToken)
 	print "Before:", data[lineNumber]
-	data[lineNumber] = data[lineNumber][:startIndex+1] + "@iss_number:" + str(number) + " " + data[lineNumber][startIndex:]
+	data[lineNumber] = data[lineNumber][:startIndex+1] + " [" + str(number) + "] " + data[lineNumber][startIndex:]
 	print "After:", data[lineNumber]
 
 	with open(issue.fileName, 'w') as file:
@@ -277,6 +213,4 @@ def main():
 	createIssues(issueList, debug)
 
 if __name__ == "__main__":
-    #main()
-	for issue in findIssuesInFile("test/parsingtests/inputs/line_block_line_block"):
-		print issue
+    main()

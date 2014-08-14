@@ -16,7 +16,7 @@ def getToken():
 	val = getValue(TOKEN_KEY)
 	if val is not None:
 		return val
-	
+
 	#generate a token
 	username = raw_input('Github username: ')
 	password = getpass.getpass('Github password: ')
@@ -41,7 +41,7 @@ def getValue(key):
 				if key in line:
 					return line.split(" ", 1)[1].strip(" \n")
 	return None
-		
+
 def addProperty(key, value):
 	with open(SETTINGS, "a+") as sett: # Will create the file if it does not exist
 		sett.write(key + " " + value + "\n")
@@ -61,7 +61,7 @@ def getRepo():
 		for line in f:
 			if "url = " in line:
 				r = line.split("=")[1].split("github.com/")[1].split("/")[1].replace(".git\n", "")
-	
+
 	# Add to our settings file
 	if r:
 		addProperty("repo", r)
@@ -93,15 +93,15 @@ def createIssues(issues, debug = False):
 		print "Debug mode on. Not actually creating issues in repo"
 	else:
 		for issue in issues:
-			if issue.data['number'] is not None:
-				afterIssues.append(issue.data['number'])
+			if issue.issue_num is not None:
+				afterIssues.append(issue.issue_num)
 			else:
 				number = createIssue(issue)
 				# inject iss_number tag into TODO comment
 				injectNumber(issue, number)
 
 		util.debug_print("before issues:\n", str(beforeIssues), "after issues:\n", str(afterIssues))
-		removeIssuesInDiff(beforeIssues, afterIssues) 
+		removeIssuesInDiff(beforeIssues, afterIssues)
 
 
 def createIssue(issue):
@@ -110,10 +110,10 @@ def createIssue(issue):
 	title = "{} : {}".format(issue.fileName, issue.line)
 	body = issue.issue
 	assignee = getOwner()
-	labels = [] if issue.label is None else [issue.label]
-	
+	labels = [] if issue.label is None else issue.label
+
 	data = {"title" : title, "body" : body, "state" : "open", "labels" : labels}
-	
+
 	url = urljoin(API_URL, "/".join(["repos", getOwner(), getRepo(), "issues"]))
 	url = url + "?access_token=" + getToken()
 
@@ -156,9 +156,9 @@ def removeIssuesInDiff(beforeIssues, afterIssues):
 	def diff(a, b):
 		b = set(b)
 		return [aa for aa in a if aa not in b]
-	
+
 	data = {"state" : "closed"}
-	
+
 	for issue in diff(beforeIssues, afterIssues):
 		url = urljoin(API_URL, "/".join(["repos", getOwner(), getRepo(), "issues", str(issue)]))
 		url = url + "?access_token=" + getToken()

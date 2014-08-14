@@ -8,6 +8,3 @@ def debug_print(*arg):
 		string = string.strip()
 
 		print string
-
-
-debug_print("hi", "hellopyton")
