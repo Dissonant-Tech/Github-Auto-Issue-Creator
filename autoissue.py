@@ -33,31 +33,24 @@ class Issue:
 def blacklistToRegex():
 	return [path.replace("*", "(.*)") for path in blacklist]
 
-#Function that gets all of the files (and folders) in a folder
+#Function that gets all of the whitelisted files (and folders) in a folder
 def getFilesWhitelist(directory):
-	#List all sub-directories and files
 	fileList = []
-	blacklisted = False
+	for root, dirs, files in os.walk(directory):
+		for fileName in files:
+			relDir = os.path.relpath(root, directory)
+			relFile = os.path.join(relDir, fileName)
+			fileList.append(relFile)
+		#for dir in dirs:
+		
 
-	for d in os.listdir(directory):
-		d = directory + "/" + d #make the format actually work for our function calls
+	return fileList
 
-		print "Checking whitelist for", d.replace("./", "")
-		if not any([re.match(pattern + "$", d.replace("./", "")) is not None for pattern in getWhitelistRegex()]):
-			print "Not in whitelist."
-		else:
-			print "Whitelisted!"
-			#if the "file" is a directory...
-			if os.path.isdir(d) and not ".git" in d: #we never want .git files; excluded to prevent stdout pollution
-				for file in getFilesWhitelist(d): #recursively iterate through the subfolders
-					fileList.append(file)
 
-			#otherwise the file is indeed a file (excluding the current file, autoissue.py)
-			#make sure our file isn't blacklisted before actually adding it to the list
-			else:
-				if d not in blacklist:
-					fileList.append(d)
-	#return list of actual files to open
+	#for d in os.listdir(directory):
+		#if directory is not ".":
+			#d = directory + "/" + d
+
 	return fileList
 
 #Function that gets all of the files (and folders) in a folder
@@ -187,16 +180,23 @@ def injectNumber(issue, number):
 
 # Returns whitelist in regex form
 def getWhitelistRegex():
-	whitelist = None
-	while whitelist is None:
+	whitelistinfile = None
+	while whitelistinfile is None:
 		try:
 			with open("autoissue.whitelist") as file:
-				whitelist = file.readlines()
+				whitelistinfile = [item.strip() for item in file.readlines()]
 		except IOError as (eno, strerror):
 			if eno == errno.ENOENT:
 				open("autoissue.whitelist", "w")
 
-	whitelist = [entry.strip().replace("*", "(.*)") for entry in whitelist]
+	whitelist = []
+
+	for entry in whitelistinfile:
+		if os.path.isdir(entry):
+			entry += "/*"
+		whitelist.append(entry.replace("*", "(.*)"))
+
+	#whitelist = [entry.strip().replace("*", "(.*)") for entry in whitelist]
 	return whitelist
 
 
@@ -233,5 +233,6 @@ def main():
 if __name__ == "__main__":
     #main()
 	#getBlacklist()
-	print getFilesWhitelist(".")
+	#print getFilesWhitelist(".")
+	print getWhitelistRegex()
 	#print blacklistToRegex()
