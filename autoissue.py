@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #from os import listdir, path
-import os, argparse, re
+import os, argparse, re, errno
 from util import debug_print
 
 #global vars
@@ -32,6 +32,33 @@ class Issue:
 
 def blacklistToRegex():
 	return [path.replace("*", "(.*)") for path in blacklist]
+
+#Function that gets all of the files (and folders) in a folder
+def getFilesWhitelist(directory):
+	#List all sub-directories and files
+	fileList = []
+	blacklisted = False
+
+	for d in os.listdir(directory):
+		d = directory + "/" + d #make the format actually work for our function calls
+
+		print "Checking whitelist for", d.replace("./", "")
+		if not any([re.match(pattern + "$", d.replace("./", "")) is not None for pattern in getWhitelistRegex()]):
+			print "Not in whitelist."
+		else:
+			print "Whitelisted!"
+			#if the "file" is a directory...
+			if os.path.isdir(d) and not ".git" in d: #we never want .git files; excluded to prevent stdout pollution
+				for file in getFilesWhitelist(d): #recursively iterate through the subfolders
+					fileList.append(file)
+
+			#otherwise the file is indeed a file (excluding the current file, autoissue.py)
+			#make sure our file isn't blacklisted before actually adding it to the list
+			else:
+				if d not in blacklist:
+					fileList.append(d)
+	#return list of actual files to open
+	return fileList
 
 #Function that gets all of the files (and folders) in a folder
 def getFiles(directory):
@@ -72,6 +99,7 @@ def findIssuesInFile(file):
 	while lineNumber < len(data):
 		issueString = ""
 		if startToken in data[lineNumber]:
+			# TODO: change to check if // comes just before startToken. This will cover the case where the comment comes after code in the line. Also, handle this case.
 			if data[lineNumber].strip().startswith("//"):
 				startingLine = lineNumber
 				issueString += data[lineNumber]
@@ -157,6 +185,21 @@ def injectNumber(issue, number):
 	with open(issue.fileName, 'w') as file:
 		file.writelines(data)
 
+# Returns whitelist in regex form
+def getWhitelistRegex():
+	whitelist = None
+	while whitelist is None:
+		try:
+			with open("autoissue.whitelist") as file:
+				whitelist = file.readlines()
+		except IOError as (eno, strerror):
+			if eno == errno.ENOENT:
+				open("autoissue.whitelist", "w")
+
+	whitelist = [entry.strip().replace("*", "(.*)") for entry in whitelist]
+	return whitelist
+
+
 def main():
 	from github import createIssues
 	parser = argparse.ArgumentParser(description="Auto-Issue-Creator argument parser")
@@ -189,6 +232,6 @@ def main():
 
 if __name__ == "__main__":
     #main()
-	getBlacklist()
-	print getFiles(".")
+	#getBlacklist()
+	print getFilesWhitelist(".")
 	#print blacklistToRegex()
