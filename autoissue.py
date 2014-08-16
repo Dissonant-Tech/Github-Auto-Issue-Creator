@@ -30,54 +30,48 @@ class Issue:
 		and	self.label == other.label \
 		and	self.issue_num == other.issue_num \
 
-def blacklistToRegex():
-	return [path.replace("*", "(.*)") for path in blacklist]
+# Returns whitelist in regex form
+def getWhitelistRegex():
+	whitelistinfile = None
+	while whitelistinfile is None:
+		try:
+			with open("autoissue.whitelist") as file:
+				whitelistinfile = [item.strip() for item in file.readlines()]
+		except IOError as (eno, strerror):
+			if eno == errno.ENOENT:
+				open("autoissue.whitelist", "w")
+
+	whitelist = []
+
+	for entry in whitelistinfile:
+		if os.path.isdir(entry):
+			entry += "/*"
+		whitelist.append(entry.replace("*", "(.*)"))
+
+	#whitelist = [entry.strip().replace("*", "(.*)") for entry in whitelist]
+	return whitelist
 
 #Function that gets all of the whitelisted files (and folders) in a folder
-def getFilesWhitelist(directory):
+def getFiles(directory = "."):
 	fileList = []
 	for root, dirs, files in os.walk(directory):
 		for fileName in files:
 			relDir = os.path.relpath(root, directory)
-			relFile = os.path.join(relDir, fileName)
-			fileList.append(relFile)
+			relFile = os.path.join(relDir if relDir is not "." else "", fileName)
+			if any([re.match(pattern + "$", relFile) is not None for pattern in getWhitelistRegex()]):
+				fileList.append(relFile)
 		#for dir in dirs:
-		
+
 
 	return fileList
 
+def getIssues():
+	files = getFiles()
+	issues = []
+	for file in files:
+		issues += findIssuesInFile(file)
+	return issues
 
-	#for d in os.listdir(directory):
-		#if directory is not ".":
-			#d = directory + "/" + d
-
-	return fileList
-
-#Function that gets all of the files (and folders) in a folder
-def getFiles(directory):
-	#List all sub-directories and files
-	fileList = []
-	blacklisted = False
-
-	for d in os.listdir(directory):
-		d = directory + "/" + d #make the format actually work for our function calls
-
-		print "Checking blacklist for", d.replace("./", "")
-		if any([re.match(pattern + "$", d.replace("./", "")) is not None for pattern in blacklistToRegex()]):
-			print "Blacklisted."
-		else:
-			#if the "file" is a directory...
-			if os.path.isdir(d) and not ".git" in d: #we never want .git files; excluded to prevent stdout pollution
-				for file in getFiles(d): #recursively iterate through the subfolders
-					fileList.append(file)
-
-			#otherwise the file is indeed a file (excluding the current file, autoissue.py)
-			#make sure our file isn't blacklisted before actually adding it to the list
-			else:
-				if d not in blacklist:
-					fileList.append(d)
-	#return list of actual files to open
-	return fileList
 
 # returns a list of the Issues in this file
 def findIssuesInFile(file):
@@ -101,7 +95,7 @@ def findIssuesInFile(file):
 					line = data[lineNumber]
 					if line.strip(): # if the line is not empty
 						if line.startswith("//"):
-							issueString += line
+							issueString += line[2:]
 						else:
 							lineNumber -= 1 # since we increment outside of this loop
 							break
@@ -150,19 +144,13 @@ def parseIssueFromRawComment(comment, line, file):
 				labels = [x.strip() for x in v.split(",")]
 
 	if title is None:
-		title = "*AutoIssue* " + comment.split("\n")[0] # Make the title the first line of the comment
+		title = comment.splitlines()[0] # Make the title the first line of the comment
 
 	content = re.sub(tags_regex, "", comment)
 	content = re.sub("(//(\s*)TODO)|(/\*(\s*)TODO)|(\*/)", "", content).strip()
 	issue = Issue(title, content, line + 1, file, labels, inum)
 	issue.data = data
 	return issue
-
-
-def debug_add(base, addition):
-	print base, "+", addition
-	return base + addition
-
 
 def injectNumber(issue, number):
 	with open(issue.fileName, 'r') as file:
@@ -171,34 +159,12 @@ def injectNumber(issue, number):
 	lineNumber = issue.line - 1
 	line = data[lineNumber]
 	startIndex = line.index(startToken) + len(startToken)
-	print "Before:", data[lineNumber]
-	data[lineNumber] = data[lineNumber][:startIndex+1] + "[" + str(number) + "]" + data[lineNumber][startIndex:]
-	print "After:", data[lineNumber]
+	#print "Before:\n", data[lineNumber]
+	data[lineNumber] = data[lineNumber][:startIndex] + " [" + str(number) + "] " + data[lineNumber][startIndex:]
+	#print "After:\n", data[lineNumber]
 
 	with open(issue.fileName, 'w') as file:
 		file.writelines(data)
-
-# Returns whitelist in regex form
-def getWhitelistRegex():
-	whitelistinfile = None
-	while whitelistinfile is None:
-		try:
-			with open("autoissue.whitelist") as file:
-				whitelistinfile = [item.strip() for item in file.readlines()]
-		except IOError as (eno, strerror):
-			if eno == errno.ENOENT:
-				open("autoissue.whitelist", "w")
-
-	whitelist = []
-
-	for entry in whitelistinfile:
-		if os.path.isdir(entry):
-			entry += "/*"
-		whitelist.append(entry.replace("*", "(.*)"))
-
-	#whitelist = [entry.strip().replace("*", "(.*)") for entry in whitelist]
-	return whitelist
-
 
 def main():
 	from github import createIssues
@@ -222,17 +188,13 @@ def main():
 	else:
 		debug = False
 
-	getBlacklist()
-
-	#issueList = getIssueList()
-	#createIssues(issueList, debug)
-
 	issueList = getIssues()
+	for issue in issueList:
+		print issue
 	createIssues(issueList, debug)
 
 if __name__ == "__main__":
-    #main()
-	#getBlacklist()
+    main()
 	#print getFilesWhitelist(".")
-	print getWhitelistRegex()
+	#print getWhitelistRegex()
 	#print blacklistToRegex()

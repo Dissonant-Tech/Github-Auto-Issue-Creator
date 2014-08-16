@@ -100,14 +100,14 @@ def createIssues(issues, debug = False):
 				# inject issue number tag into TODO comment
 				injectNumber(issue, number)
 
-		util.debug_print("before issues:\n", str(beforeIssues), "after issues:\n", str(afterIssues))
+		util.debug_print("before issues:\n", str(beforeIssues), "\nafter issues:\n", str(afterIssues))
 		removeIssuesInDiff(beforeIssues, afterIssues)
 
 
 def createIssue(issue):
 	print "CREATING ISSUE: ", issue.issue, " in file: ", issue.fileName, " on line: ", issue.line, " with label: ", issue.label
 
-	title = "{} : {}".format(issue.fileName, issue.line)
+	title = "*AutoIssue* " + issue.title
 	body = issue.issue
 	assignee = getOwner()
 	labels = [] if issue.label is None else issue.label
